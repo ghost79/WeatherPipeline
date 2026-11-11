@@ -1,6 +1,7 @@
 import requests
 from requests.exceptions import HTTPError
 import pandas as pd
+from pathlib import Path
 
 CITIES = {
     "Oslo": (59.91, 10.75),
@@ -10,6 +11,8 @@ CITIES = {
 }
 
 API_URL = "https://api.open-meteo.com/v1/forecast"
+
+DATA_DIR = Path("data")
 
 def extract(lat, lon):
     params = {
@@ -46,6 +49,21 @@ def transform(raw, city):
 
     return data_frame
 
+def load(all_data):
+    Path("data").mkdir(exist_ok=True)
+
+    csv_path = DATA_DIR / "weather.csv"
+    parquet_path = DATA_DIR / "weather.parquet"
+
+    all_data.to_csv(csv_path, index=False)
+    all_data.to_parquet(parquet_path, index=False)
+
+    csv_data = pd.read_csv(csv_path)
+    parquet_data = pd.read_parquet(parquet_path)
+
+    print(f">> CSV bytes: {csv_path.stat().st_size} (dtype {csv_data.dtypes})")
+    print(f">> Parquet bytes: {parquet_path.stat().st_size} (dtype {parquet_data.dtypes})")
+
 def main():
     frames = []
 
@@ -64,6 +82,8 @@ def main():
     print(f"Shape: {all_data.shape}")
     print(f"dtypes: {all_data.dtypes}")
     print(f"Sum: {all_data.isna().sum()}")
+
+    load(all_data)
 
 if __name__ == "__main__":
     main()
