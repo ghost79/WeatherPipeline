@@ -12,6 +12,7 @@ Weather data comes from the [Open-Meteo](https://open-meteo.com/) forecast API, 
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+python pipeline.py
 ```
 
 The output is written to data/ (not version controlled).
@@ -37,3 +38,7 @@ A data lake stores raw, unstructured or structured data in its original format f
 Data lakes' main use cases are machine learning and deep data analysis, while data warehouses are more for business intelligence, fast SQL queries and dashboards.
 
 There are available hybrid options called lakehouses which put a data warehouse as a layer on top of the data lake.
+
+## CSV vs. Parquet
+
+Saving the extracted data to both CSV and Parquet shows that when in CSV format all the types are stripped and when reading it back in you'll have to guess what format it's in. In addition to saving all the formats for the data, the file size of the Parquet file is considerably smaller, even with the small number of entries we got here.
