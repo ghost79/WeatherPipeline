@@ -4,7 +4,7 @@ A small batch data pipeline that extracts hourly weather data for four Norwegian
 
 ## Data source
 
-Weather data comes from the [Open-Meteo](https://open-meteo.com/) forecast API, which is free and requires no API key. For each of Oslo, Bergen, Trondheim and Tromsø, the pipeline requests hourly temperature (`temperature_2m`), precipitation and wind speed (`wind_speed_10m`) for the past seven days, using the `Europe/Oslo` time zone.
+Weather data comes from the [Open-Meteo](https://open-meteo.com/) forecast API, which is free and requires no API key. For each of Oslo, Bergen, Trondheim and Tromsø, the pipeline requests hourly temperature (`temperature_2m`), precipitation and wind speed (`wind_speed_10m`) for the past seven days plus the seven-day forecast, using the `Europe/Oslo` time zone.
 
 ## Running the pipeline
 
@@ -41,4 +41,4 @@ There are available hybrid options called lakehouses which put a data warehouse 
 
 ## CSV vs. Parquet
 
-Saving the extracted data to both CSV and Parquet shows that when in CSV format all the types are stripped and when reading it back in you'll have to guess what format it's in. In addition to saving all the formats for the data, the file size of the Parquet file is considerably smaller, even with the small number of entries we got here. In my limited experiment with just 1344 data point the Parquet file was 4.7x smaller than the CSV file.
+Saving the extracted data to both CSV and Parquet shows that when in CSV format all the types are stripped and when reading it back in you'll have to guess what format it's in. In addition to saving all the formats for the data, the file size of the Parquet file is considerably smaller, even with the small number of entries we got here. In my limited experiment with just 1344 rows the Parquet file was 4.7x smaller than the CSV file.
