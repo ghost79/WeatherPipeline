@@ -50,7 +50,7 @@ def transform(raw, city):
     return data_frame
 
 def load(all_data):
-    Path("data").mkdir(exist_ok=True)
+    Path(DATA_DIR).mkdir(exist_ok=True)
 
     csv_path = DATA_DIR / "weather.csv"
     parquet_path = DATA_DIR / "weather.parquet"
