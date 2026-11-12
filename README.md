@@ -15,7 +15,7 @@ pip install -r requirements.txt
 python pipeline.py
 ```
 
-The output is written to data/ (not version controlled).
+The output is written to the folder `data/` (not version controlled).
 
 ## ETL vs. ELT
 
@@ -41,4 +41,4 @@ There are available hybrid options called lakehouses which put a data warehouse 
 
 ## CSV vs. Parquet
 
-Saving the extracted data to both CSV and Parquet shows that when in CSV format all the types are stripped and when reading it back in you'll have to guess what format it's in. In addition to saving all the formats for the data, the file size of the Parquet file is considerably smaller, even with the small number of entries we got here.
+Saving the extracted data to both CSV and Parquet shows that when in CSV format all the types are stripped and when reading it back in you'll have to guess what format it's in. In addition to saving all the formats for the data, the file size of the Parquet file is considerably smaller, even with the small number of entries we got here. In my limited experiment with just 1344 data point the Parquet file was 4.7x smaller than the CSV file.
