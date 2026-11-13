@@ -4,7 +4,7 @@ A small batch data pipeline that extracts hourly weather data for four Norwegian
 
 ## Data source
 
-Weather data comes from the [Open-Meteo](https://open-meteo.com/) forecast API, which is free and requires no API key. For each of Oslo, Bergen, Trondheim and Tromsø, the pipeline requests hourly temperature (`temperature_2m`), precipitation and wind speed (`wind_speed_10m`) for the past seven days plus the seven-day forecast, using the `Europe/Oslo` time zone.
+Weather data comes from the [Open-Meteo](https://open-meteo.com/) forecast API, which is free and requires no API key. For each of Oslo, Bergen, Trondheim and Tromsø, the pipeline requests hourly temperature (`temperature_2m`), precipitation and wind speed (`wind_speed_10m`) for the date interval you give it, using the `Europe/Oslo` time zone.
 
 ## Running the pipeline
 
@@ -12,10 +12,23 @@ Weather data comes from the [Open-Meteo](https://open-meteo.com/) forecast API, 
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+```
+
+Running the pipeline can be done with or without its arguments:
+
+### With
+
+```bash
+python pipeline.py --from 2026-11-01 --to 2026-11-10
+```
+
+### Without
+
+```bash
 python pipeline.py
 ```
 
-The output is written to the folder `data/` (not version controlled).
+Cities are always chosen from an interactive list. Any date that is not given as an argument is prompted for, with today’s date as the default.
 
 ## ETL vs. ELT
 
