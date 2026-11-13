@@ -1,3 +1,4 @@
+import questionary
 import requests
 from requests.exceptions import HTTPError
 import pandas as pd
@@ -27,7 +28,6 @@ def extract(lat, lon):
         response = requests.get(API_URL, params=params)
 
         response.raise_for_status()
-
         return response.json()
 
     except HTTPError as http_err:
