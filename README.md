@@ -1,6 +1,6 @@
 # WeatherPipeline
 
-A small batch data pipeline that extracts hourly weather data for four Norwegian cities, cleans it with pandas and stores it as Parquet. It is a learning project in data engineering, built step by step, and the notes below explain the key concepts behind the design choices.
+A small batch data pipeline that extracts hourly weather data for four Norwegian cities, cleans it with pandas and stores it in a DuckDB database. It is a learning project in data engineering, built step by step, and the notes below explain the key concepts behind the design choices.
 
 ## Data source
 
@@ -30,6 +30,12 @@ python pipeline.py
 
 Cities are always chosen from an interactive list. Any date that is not given as an argument is prompted for, with today’s date as the default.
 
+The output is written to the database in `data/weather.duckdb` (not version controlled).
+
+## Idempotency
+
+To ensure idempotency when loading the data the app uses a delete-and-load per city and date in one transaction, with a primary key as the last defence. Running the pipeline twice for the same dates leaves the database unchanged.
+
 ## ETL vs. ELT
 
 ETL (Extract Transform Load) was the standard for data pipelines before the dawn of cloud computing. This ensured that the data stored was in the right format based on rigid rules which were applied before the data was stored. This saved costs related to storage and fitted the business logic to query it. Even in today's cloud compute world with cheap storage, using ETL is beneficial for use cases such as health care records and financial transactions which require compliance.
@@ -52,6 +58,8 @@ Data lakes' main use cases are machine learning and deep data analysis, while da
 
 There are available hybrid options called lakehouses which put a data warehouse as a layer on top of the data lake.
 
+In this project, the DuckDB table is closer to a warehouse. The schema is defined up front and the data is cleaned before loading (schema-on-write).
+
 ## CSV vs. Parquet
 
-Saving the extracted data to both CSV and Parquet shows that when in CSV format all the types are stripped and when reading it back in you'll have to guess what format it's in. In addition to saving all the formats for the data, the file size of the Parquet file is considerably smaller, even with the small number of entries we got here. In my limited experiment with just 1344 rows the Parquet file was 4.7x smaller than the CSV file.
+As an experiment during the development of this app, it previously saved the extracted data to both CSV and Parquet. This showed that when in CSV format all the types are stripped and when reading it back in you'll have to guess what format it's in. Parquet also preserves the column types, and the file size of the Parquet file was considerably smaller, even with the small number of entries we got here. In my limited experiment with just 1344 rows the Parquet file was 4.7x smaller than the CSV file.

@@ -3,6 +3,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
+import duckdb
 import pandas as pd
 import questionary
 import requests
@@ -18,6 +19,7 @@ CITIES = {
 API_URL = "https://api.open-meteo.com/v1/forecast"
 
 DATA_DIR = Path("data")
+DB_PATH = DATA_DIR / "weather.duckdb"
 
 def extract(lat, lon, start_date, end_date):
     """Fetch hourly weather for one location over an inclusive date range."""
@@ -56,13 +58,51 @@ def transform(raw, city):
 
     return data_frame
 
-def load(all_data):
+def load(all_data, start_date, end_date):
+    """Idempotently load rows into DuckDB.
+
+    Deletes existing rows for the fetched cities within the date range, then
+    inserts the new ones, all in one transaction. Running it twice for the same
+    range therefore leaves the table unchanged.
+    """
     DATA_DIR.mkdir(exist_ok=True)
+    cities = all_data["city"].unique().tolist()
 
-    parquet_path = DATA_DIR / "weather.parquet"
-    all_data.to_parquet(parquet_path, index=False)
+    con = duckdb.connect(str(DB_PATH))
+    try:
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS weather (
+                time TIMESTAMP,
+                temperature_c DOUBLE,
+                precipitation_mm DOUBLE,
+                wind_speed_kmh DOUBLE,
+                city VARCHAR,
+                PRIMARY KEY (city, time)
+            )
+        """)
 
-    print(f">> Wrote {len(all_data)} rows to {parquet_path}")
+        con.begin()
+        deleted = con.execute(
+            """
+            DELETE FROM weather
+            WHERE list_contains(?, city)
+              AND CAST(time AS DATE) BETWEEN ? AND ?
+            RETURNING 1
+            """,
+            [cities, start_date, end_date],
+        ).fetchall()
+        con.execute("INSERT INTO weather BY NAME SELECT * FROM all_data")
+        con.commit()
+
+        total = con.execute("SELECT count(*) FROM weather").fetchone()[0]
+    except Exception:
+        con.rollback()
+        raise
+    finally:
+        con.close()
+
+    print(f">> Replaced {len(deleted)} rows with {len(all_data)} in {DB_PATH} "
+          f"(table now has {total} rows)")
 
 def parse_date(value):
     try:
@@ -128,11 +168,11 @@ def main(cities, start_date, end_date):
     print(f"dtypes: {all_data.dtypes}")
     print(f"Sum: {all_data.isna().sum()}")
 
-    load(all_data)
+    load(all_data, start_date, end_date)
 
 if __name__ == "__main__":
     today = date.today()
-    parser = argparse.ArgumentParser(description="Fetch weather data into Parquet.")
+    parser = argparse.ArgumentParser(description="Fetch weather data into DuckDB.")
     parser.add_argument("--from", dest="start_date", type=parse_date,
                         help="start date, YYYY-MM-DD (prompted, default today, if omitted)")
     parser.add_argument("--to", dest="end_date", type=parse_date,
