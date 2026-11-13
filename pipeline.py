@@ -50,19 +50,12 @@ def transform(raw, city):
     return data_frame
 
 def load(all_data):
-    Path(DATA_DIR).mkdir(exist_ok=True)
+    DATA_DIR.mkdir(exist_ok=True)
 
-    csv_path = DATA_DIR / "weather.csv"
     parquet_path = DATA_DIR / "weather.parquet"
-
-    all_data.to_csv(csv_path, index=False)
     all_data.to_parquet(parquet_path, index=False)
 
-    csv_data = pd.read_csv(csv_path)
-    parquet_data = pd.read_parquet(parquet_path)
-
-    print(f">> CSV bytes: {csv_path.stat().st_size} (dtype {csv_data.dtypes})")
-    print(f">> Parquet bytes: {parquet_path.stat().st_size} (dtype {parquet_data.dtypes})")
+    print(f">> Wrote {len(all_data)} rows to {parquet_path}")
 
 def main():
     frames = []
