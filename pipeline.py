@@ -1,4 +1,5 @@
 import argparse
+import logging
 import sys
 from datetime import date
 from pathlib import Path
@@ -21,6 +22,8 @@ API_URL = "https://api.open-meteo.com/v1/forecast"
 DATA_DIR = Path("data")
 DB_PATH = DATA_DIR / "weather.duckdb"
 
+logger = logging.getLogger(__name__)
+
 def extract(lat, lon, start_date, end_date):
     """Fetch hourly weather for one location over an inclusive date range."""
     params = {
@@ -40,10 +43,10 @@ def extract(lat, lon, start_date, end_date):
         return response.json()
 
     except HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err}")
+        logger.error("HTTP error occurred: %s", http_err)
 
     except Exception as err:
-        print(f"An error occurred: {err}")
+        logger.error("An error occurred: %s", err)
 
 def transform(raw, city):
     data_frame = pd.DataFrame(raw["hourly"])
@@ -97,12 +100,13 @@ def load(all_data, start_date, end_date):
         total = con.execute("SELECT count(*) FROM weather").fetchone()[0]
     except Exception:
         con.rollback()
+        logger.exception("Database execution failed - rolled back to previous state")
         raise
     finally:
         con.close()
 
-    print(f">> Replaced {len(deleted)} rows with {len(all_data)} in {DB_PATH} "
-          f"(table now has {total} rows)")
+    logger.info("Replaced %d rows with %d in %s "
+                "(table now has %d rows)", len(deleted), len(all_data), DB_PATH, total)
 
 def parse_date(value):
     try:
@@ -148,13 +152,14 @@ def select_cities():
 def main(cities, start_date, end_date):
     frames = []
 
-    print(" --- Fetching weather data --- ")
+    logger.info("Fetching weather data")
     for city in cities:
         lat, lon = CITIES[city]
-        print(f" > City: {city}")
+        logger.info("City: %s", city)
         raw = extract(lat, lon, start_date, end_date)
 
         if raw is None:
+            logger.warning("No data for %s", city)
             continue
 
         df = transform(raw, city)
@@ -164,13 +169,15 @@ def main(cities, start_date, end_date):
         sys.exit("No data fetched, nothing to load.")
 
     all_data = pd.concat(frames)
-    print(f"Shape: {all_data.shape}")
-    print(f"dtypes: {all_data.dtypes}")
-    print(f"Sum: {all_data.isna().sum()}")
+    logger.info("Shape: %s", all_data.shape)
+    logger.debug("dtypes: %s", all_data.dtypes)
+    logger.debug("Sum: %s", all_data.isna().sum())
 
     load(all_data, start_date, end_date)
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-7s %(message)s")
+
     today = date.today()
     parser = argparse.ArgumentParser(description="Fetch weather data into DuckDB.")
     parser.add_argument("--from", dest="start_date", type=parse_date,
