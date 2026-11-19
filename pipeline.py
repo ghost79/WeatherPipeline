@@ -24,6 +24,9 @@ DB_PATH = DATA_DIR / "weather.duckdb"
 
 logger = logging.getLogger(__name__)
 
+class ExtractError(Exception):
+    """Raised when data cannot be fetched from the API."""
+
 def extract(lat, lon, start_date, end_date):
     """Fetch hourly weather for one location over an inclusive date range."""
     params = {
@@ -36,17 +39,17 @@ def extract(lat, lon, start_date, end_date):
     }
 
     try:
-        response = requests.get(API_URL, params=params)
+        response = requests.get(API_URL, params=params, timeout=60)
 
         response.raise_for_status()
 
         return response.json()
 
     except HTTPError as http_err:
-        logger.error("HTTP error occurred: %s", http_err)
+        raise ExtractError(f"Communication with API failed: {http_err}") from http_err
 
     except Exception as err:
-        logger.error("An error occurred: %s", err)
+        raise ExtractError(f"Could not reach the API: {err}") from err
 
 def transform(raw, city):
     data_frame = pd.DataFrame(raw["hourly"])
@@ -156,17 +159,16 @@ def main(cities, start_date, end_date):
     for city in cities:
         lat, lon = CITIES[city]
         logger.info("City: %s", city)
-        raw = extract(lat, lon, start_date, end_date)
 
-        if raw is None:
-            logger.warning("No data for %s", city)
-            continue
+        try:
+            raw = extract(lat, lon, start_date, end_date)
+
+        except ExtractError as err:
+            logger.error("Extraction failed: %s", err)
+            sys.exit(1)
 
         df = transform(raw, city)
         frames.append(df)
-
-    if not frames:
-        sys.exit("No data fetched, nothing to load.")
 
     all_data = pd.concat(frames)
     logger.info("Shape: %s", all_data.shape)
