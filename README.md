@@ -32,6 +32,28 @@ Cities are always chosen from an interactive list. Any date that is not given as
 
 The output is written to the database in `data/weather.duckdb` (not version controlled).
 
+## Testing
+
+The unit tests mock the network, so they run offline and instantly:
+
+```bash
+python -m unittest test_pipeline -v
+```
+
+They cover the retry logic in `extract()`: repeated 503 responses, a call that
+fails twice before succeeding, and a 404 that must not be retried.
+
+Because mocks only prove that the logic matches my assumptions about `requests`,
+it is also worth checking against a real failure. Temporarily change `API_URL`
+in `pipeline.py` and run the pipeline:
+
+| `API_URL` | Expected result |
+|---|---|
+| `http://localhost:9` | Connection refused: four warnings, then an error and exit code 1 |
+| `https://api.open-meteo.com/v1/forecastx` | HTTP 404: no retries, an immediate error and exit code 1 |
+
+Remember to restore the original URL afterwards.
+
 ## Idempotency
 
 To ensure idempotency when loading the data the app uses a delete-and-load per city and date in one transaction, with a primary key as the last defence. Running the pipeline twice for the same dates leaves the database unchanged.
