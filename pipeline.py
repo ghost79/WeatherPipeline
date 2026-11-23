@@ -22,6 +22,8 @@ API_URL = "https://api.open-meteo.com/v1/forecast"
 DATA_DIR = Path("data")
 DB_PATH = DATA_DIR / "weather.duckdb"
 
+MAX_ATTEMPTS = 4
+
 logger = logging.getLogger(__name__)
 
 class ExtractError(Exception):
@@ -38,18 +40,30 @@ def extract(lat, lon, start_date, end_date):
         "timezone": "Europe/Oslo",
     }
 
-    try:
-        response = requests.get(API_URL, params=params, timeout=60)
+    last_error = None
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            response = requests.get(API_URL, params=params, timeout=60)
 
-        response.raise_for_status()
+            response.raise_for_status()
 
-        return response.json()
+            return response.json()
 
-    except HTTPError as http_err:
-        raise ExtractError(f"Communication with API failed: {http_err}") from http_err
+        except (requests.ConnectionError, requests.Timeout) as other_err:
+            logger.warning("Attempt %d/%d failed: %s", attempt, MAX_ATTEMPTS, other_err)
+            last_error = other_err
 
-    except Exception as err:
-        raise ExtractError(f"Could not reach the API: {err}") from err
+        except HTTPError as http_err:
+            if http_err.response.status_code == 429 or http_err.response.status_code >= 500:
+                logger.warning("Attempt %d/%d failed: %s", attempt, MAX_ATTEMPTS, http_err)
+                last_error = http_err
+            else:
+                raise ExtractError(f"Communication with API failed: {http_err}") from http_err
+
+        except Exception as err:
+            raise ExtractError(f"Could not reach the API: {err}") from err
+
+    raise ExtractError(f"Max number of retries reached: {last_error}")
 
 def transform(raw, city):
     data_frame = pd.DataFrame(raw["hourly"])
